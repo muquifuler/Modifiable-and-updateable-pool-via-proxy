@@ -41,6 +41,8 @@ contract StakingPool_Calibrates_APR is Ownable
     *
     *   Explanation: If you put for example 3 years, you are telling him to distribute the money from the pool gradually over 3 years.
     *   Clarification: The time is continuously recalculated, therefore it is an infinite pool of time.
+    *
+    *   WARNING: 1 year costs 31536000 gas, 2 twice as much and so on, the maximum being 255
     */
     constructor(uint8 newYears) payable
     {
