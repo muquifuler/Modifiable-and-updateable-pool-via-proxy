@@ -173,7 +173,10 @@ contract StakingPool_Calibrates_APR is Ownable
     {
         poolActive = false;
     }
-
+    
+    /*
+    *   Override the function to make it unusable and prevent the pool from becoming ownerless
+    */
     function renounceOwnership() public override{}
 
 }
