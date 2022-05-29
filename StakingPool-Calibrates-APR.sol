@@ -4,8 +4,8 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract StakingPool_Calibrates_APR is Ownable
-    // Pool without time limit in which the developer can calibrate the APR by choosing in how many years the liquidity of the pool will be divided
 {
+    // Pool without time limit in which the developer can calibrate the APR by choosing in how many years the liquidity of the pool will be divided
 
     /*
     *   @FEE            -> The commission charged for deposit
@@ -24,7 +24,11 @@ contract StakingPool_Calibrates_APR is Ownable
     uint256 private allBalances;
     uint64 private minimumLiquidity;
     uint8 private years_;
+    bool private poolActive = false;
 
+    /*
+    *   Store user data
+    */
     struct User{
         uint256 balance;
         uint256 profit;
@@ -33,6 +37,17 @@ contract StakingPool_Calibrates_APR is Ownable
 
     mapping(address => User) private users;
 
+    /*
+    *   Check that the pool is active
+    */
+    modifier isActive {
+        require(poolActive == true, "The pool is disabled.");
+        _;
+    }
+
+    /*
+    *   Events that are emitted when someone invests or withdraws money
+    */
     event invest_(address indexed sender, uint256 indexed value);
     event withdraw_(address indexed sender, uint256 indexed value);
 
@@ -44,16 +59,27 @@ contract StakingPool_Calibrates_APR is Ownable
     *
     *   WARNING: 1 year costs a MINIMUM of 31536000 gas, 2 twice as much and so on, being the maximum 255
     */
-    constructor(uint8 newYears) payable
+
+    constructor(uint8 newYears)
     {
-        require(newYears <= 255, "Too many years");
-        require(msg.value >= SECONDS_A_YEAR*newYears, "There is not enough gas to start the pool");
-        pool = msg.value;
-        minimumLiquidity = SECONDS_A_YEAR*newYears;
+        require(newYears <= 255 && newYears >= 1, "Incorrect years");
         years_ = newYears;
     }
 
-    function invest() external payable
+    /*
+    *   This function has been separated from the constructor so as not to exceed the gas limit of the block, in this case from the Bsc Testnet
+    */
+    function activePool() external payable onlyOwner {
+        require(msg.value >= SECONDS_A_YEAR*years_ && poolActive == false, "There is not enough gas to start the pool");
+        pool = msg.value;
+        minimumLiquidity = SECONDS_A_YEAR*years_;
+        poolActive = true;
+    }
+
+    /*
+    *   A function for any user to make a transaction to the pool
+    */
+    function invest() external payable isActive
     {
         // When changing the amount, the last profit is added so that it does not intervene with the new amount
         if(users[msg.sender].balance != 0) users[msg.sender].profit = getUserProfit();
@@ -82,6 +108,14 @@ contract StakingPool_Calibrates_APR is Ownable
     }
 
     /*
+    *   @return How much is left for the pool to be full
+    */
+    function injectMoney() external payable isActive
+    {
+        pool += msg.value;
+    }
+
+    /*
     *   pool/years_     -> Annual money available to distribute
     *   /allBalances    -> Annual money divided by total user money
     *   *100            -> The result is translated into a percentage
@@ -89,8 +123,8 @@ contract StakingPool_Calibrates_APR is Ownable
     function getApr() external view returns (uint256)
     {
         require(allBalances > 0 && pool > 2, "There is no money in the pool");
-        if(((pool/years_)*100)/allBalances == 0) return 0; 
-        return ((pool/years_)*100)/allBalances;
+        uint256 userMoney = ((pool/years_)*100)/allBalances;
+        return userMoney == 0 ? 0 : userMoney;
     }
     
     /*
@@ -124,7 +158,7 @@ contract StakingPool_Calibrates_APR is Ownable
     *                              divided by 100 and multiplied by the percentage of the user plus 
     *                              the accumulated profit of the user.
     */
-    function getUserProfit() public view returns (uint256)
+    function getUserProfit() private view returns (uint256)
     {
         require(users[msg.sender].balance > 0 && (pool/years_) > SECONDS_A_YEAR, "There is no money in the pool");
         uint256 moneyPerSecond = (pool/years_)/SECONDS_A_YEAR;
@@ -133,11 +167,13 @@ contract StakingPool_Calibrates_APR is Ownable
     }
 
     /*
-    *   @return How much is left for the pool to be full
+    *   Turn off pool
     */
-    function injectMoney() external payable
+    function poolOff() external onlyOwner
     {
-        pool += msg.value;
+        poolActive = false;
     }
+
+    function renounceOwnership() public override{}
 
 }
