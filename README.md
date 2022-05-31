@@ -1,4 +1,11 @@
-# StakingPool-Calibrates-APR
-  Pool without time limit in which the developer can calibrate the APR by choosing in how many years the liquidity of the pool will be divided.
+# About pool
 
-  A proxy system is used to be able to update the contract.
+  It is a pool that offers rewards based on the total number of tokens in the pool between the years that are chosen.
+
+# Oracle
+
+  It uses oracles to return to the user the total value of their tokens in dollars in real time.
+
+# Updateable contract
+
+  And thanks to the proxy.sol contract in which the state and proxyAdmin are stored, it is possible to have an updateable contract.
